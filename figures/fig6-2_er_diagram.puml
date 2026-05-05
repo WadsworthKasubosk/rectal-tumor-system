@@ -1,0 +1,92 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 12
+skinparam class {
+    BorderColor #333333
+    BackgroundColor #F8F9FA
+    HeaderBackgroundColor #E3F2FD
+}
+
+title Figure 6-2: Entity-Relationship Diagram (ER Diagram)
+
+entity "users" as users {
+    * **id** : INTEGER <<PK>>
+    --
+    * username : VARCHAR(50) UNIQUE
+    * password_hash : VARCHAR(256)
+    * role : VARCHAR(20)  "admin / doctor"
+    * created_at : DATETIME
+}
+
+entity "patients" as patients {
+    * **id** : INTEGER <<PK>>
+    --
+    * name : VARCHAR(50)
+    * gender : VARCHAR(10)
+    * age : INTEGER
+    * patient_no : VARCHAR(30) UNIQUE
+    * created_by : INTEGER <<FK>>
+    * created_at : DATETIME
+}
+
+entity "cases" as cases {
+    * **id** : INTEGER <<PK>>
+    --
+    * patient_id : INTEGER <<FK>>
+    * image_path : VARCHAR(500)
+    * original_filename : VARCHAR(255)
+    * status : VARCHAR(20)  "pending / completed"
+    * notes : TEXT
+    * created_by : INTEGER <<FK>>
+    * created_at : DATETIME
+}
+
+entity "diagnoses" as diagnoses {
+    * **id** : INTEGER <<PK>>
+    --
+    * case_id : INTEGER <<FK>>
+    * model_name : VARCHAR(50)  "baseline / exp2_p2 / exp3_cbam / exp4_p2_cbam"
+    * overlay_image_path : VARCHAR(500)
+    * detection_count : INTEGER
+    * mean_confidence : FLOAT
+    * inference_time_ms : FLOAT
+    * dice_score : FLOAT  <<nullable>>
+    * report_json : TEXT
+    * created_at : DATETIME
+}
+
+entity "reports" as reports {
+    * **id** : INTEGER <<PK>>
+    --
+    * case_id : INTEGER <<FK>>
+    * diagnosis_id : INTEGER <<FK>>
+    * pdf_path : VARCHAR(500)
+    * conclusion : TEXT
+    * doctor_notes : TEXT
+    * generated_by : INTEGER <<FK>>
+    * created_at : DATETIME
+}
+
+' ── Relationships ────────────────────────────────────────────────
+users ||--o{ patients : "creates"
+users ||--o{ cases : "creates"
+users ||--o{ reports : "generates"
+patients ||--o{ cases : "has"
+cases ||--o{ diagnoses : "1 case →\nN diagnoses\n(1 per model)"
+diagnoses ||--o| reports : "produces"
+
+note right of diagnoses
+  One case produces up to 4 diagnosis
+  records (one per model variant).
+  The doctor selects one as primary.
+end note
+
+note bottom of reports
+  PDF report includes:
+  patient info, AI results table,
+  overlay image, doctor notes,
+  digital signature & disclaimer.
+end note
+
+@enduml

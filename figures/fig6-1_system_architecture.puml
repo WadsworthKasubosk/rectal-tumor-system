@@ -1,0 +1,85 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam arrowColor #555555
+skinparam arrowThickness 2
+
+title Figure 6-1: Rectal Tumor AI Diagnosis System — System Architecture
+
+' ── Layers ────────────────────────────────────────────────────
+package "Frontend (Vue 3 + Element Plus)" as FE #E3F2FD {
+    [Vite Dev Server\n(localhost:5173)] as Vite
+    rectangle "Vue 3 SPA\n(Composition API)" as Vue {
+        [Router\n(Vue Router)] as Router
+        [State\n(Pinia)] as Pinia
+        [ECharts\nVisualization] as ECharts
+        [Element Plus\nUI Components] as ElPlus
+    }
+    file "index.html" as Html
+}
+
+package "Backend (FastAPI + Uvicorn)" as BE #E8F5E9 {
+    [Uvicorn ASGI Server\n(localhost:8000)] as Uvicorn
+    rectangle "FastAPI Application" as FastAPI {
+        [JWT Auth Middleware] as AuthMW
+        [CORS Middleware] as CORSMW
+        [Static Files\n(overlay images)] as Static
+        rectangle "API Routers" as Routers {
+            [POST /api/auth/login] as AuthAPI
+            [POST /api/inference/single] as InferSingle
+            [POST /api/inference/compare] as InferCompare
+            [GET/POST /api/cases] as CasesAPI
+            [POST /api/reports/{id}] as ReportsAPI
+            [GET /api/stats/dashboard] as StatsAPI
+        }
+        rectangle "Core Services" as Core {
+            [Inference Engine\n(YOLO11s-seg ×4)] as InferEngine
+            [PDF Generator\n(ReportLab)] as PDFGen
+        }
+    }
+}
+
+package "Database" as DB_LAYER #FFF3E0 {
+    [SQLite\n(rectal_tumor.db)] as SQLite
+}
+
+rectangle "Model Weights\n(*.pt files)" as Models #F3E5F5 {
+    [baseline.pt] as M1
+    [exp2_p2.pt] as M2
+    [exp3_cbam.pt] as M3
+    [exp4_p2_cbam.pt] as M4
+}
+
+' ── External ───────────────────────────────────────────────────
+actor "Doctor\n(User)" as User
+cloud "Browser" as Browser
+
+' ── Connections ────────────────────────────────────────────────
+User --> Browser
+Browser -down-> Vite : HTTP (dev)
+Vite -down-> Uvicorn : REST API (JSON)
+InferEngine -down-> Models : load .pt
+M1 -[hidden]right- M2
+M2 -[hidden]right- M3
+M3 -[hidden]right- M4
+
+Core -down-> SQLite : SQLAlchemy ORM
+FastAPI -down-> SQLite
+
+' ── Layout ─────────────────────────────────────────────────────
+FE -[hidden]right- BE
+BE -[hidden]right- DB_LAYER
+
+note bottom of Models
+  YOLO11s-seg variants:
+  Baseline / +P2 / +CBAM / P2+CBAM
+end note
+
+note bottom of SQLite
+  Tables: users, patients,
+  cases, diagnoses, reports
+end note
+
+@enduml
