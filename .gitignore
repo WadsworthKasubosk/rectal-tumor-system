@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# Models & data (too large for git)
+*.pt
+*.zip
+*.tar.gz
+datasets/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/reports/*
+!backend/reports/.gitkeep
+results/*
+!results/.gitkeep
+project/runs/
+project/results/
+runs/
+
+# Logs
+logs/
+*.log
+project/logs/
+
+# Database
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+frontend/dist/

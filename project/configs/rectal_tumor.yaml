@@ -1,0 +1,13 @@
+# YOLOv11-seg Dataset Configuration — Rectal Tumor Detection
+# Path relative to the ultralytics training root (usually project root)
+path: /workspace/project/datasets/rectal_tumor
+train: images/train
+val: images/val
+test: images/test
+
+# Class names
+names:
+  0: tumor
+
+# Number of classes
+nc: 1
