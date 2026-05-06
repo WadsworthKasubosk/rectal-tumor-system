@@ -1,0 +1,6 @@
+{
+  "title_cn": "基于改进 YOLO11s-seg 的直肠肿瘤辅助诊断系统设计与实现",
+  "title_en": "Design and Implementation of a Rectal Tumor Computer-Aided Diagnosis System Based on Improved YOLO11s-seg",
+  "abstract_cn": "结直肠癌是全球发病率第三、致死率第二的恶性肿瘤，其中直肠肿瘤约占全部结直肠癌的三分之一。结肠镜检查是早期筛查的金标准，但人工阅片存在漏诊率高、医师疲劳、经验依赖性强等问题。基于深度学习的计算机辅助诊断（CAD）系统能够在内镜检查过程中实时定位与分割可疑病灶，是降低漏诊率的有效手段。",
+  "keywords_cn": "关键词：直肠肿瘤；息肉分割；YOLO11；CBAM；FastAPI；Vue 3；辅助诊断系统"
+}
