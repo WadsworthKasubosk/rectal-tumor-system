@@ -1,0 +1,84 @@
+{
+  "title_cn": "基于改进 YOLO11s-seg 的直肠肿瘤辅助诊断系统设计与实现",
+  "title_en": "Design and Implementation of a Rectal Tumor Computer-Aided\nDiagnosis System Based on Improved YOLO11s-seg",
+
+  "abstract_cn": "结直肠癌是全球发病率第三、致死率第二的恶性肿瘤，其中直肠肿瘤约占全部结直肠癌的三分之一。结肠镜检查是早期筛查的金标准，但人工阅片存在漏诊率高、医师疲劳、经验依赖性强等问题。基于深度学习的计算机辅助诊断（CAD）系统能够在内镜检查过程中实时定位与分割可疑病灶，是降低漏诊率的有效手段。\n\n本文以 Ultralytics 最新发布的 YOLO11s-seg 为骨干，围绕直肠肿瘤实例分割任务展开研究，构建了一套从数据准备、模型训练、消融评估到 Web 交付的完整系统。论文的主要工作包括四个方面。其一，整合 Kvasir-SEG、CVC-ClinicDB 两份训练数据共 1612 张图像与 PraNet 五子集测试包共 798 张图像，通过 OpenCV 轮廓提取与多边形近似将二值掩码转换为 YOLO-seg 标注，按 8:1:1 的比例划分训练集、验证集与池内测试集，并使用文件名指纹去除测试集与训练集的同源样本，杜绝数据泄漏。其二，针对小息肉漏检与边界粘连问题，设计了三种改进结构：实验 2 在 Neck 中引入 P2 高分辨率特征回灌分支，实验 3 在 Backbone 的 P3/P4/P5 后插入 CBAM 注意力模块，实验 4 将上述两者组合；三种改进均保持原始三尺度检测头与 8400 锚点不变，确保与基线公平比较。其三，在统一超参数（AdamW、lr0=0.001、imgsz=640、batch=32、100 epoch）下完成四组消融实验，结果表明：基线模型平均 Dice 达到 0.6313；+CBAM 在 CVC-300 子集上将 Dice 由 0.5172 提升至 0.6306（+0.1134）；+P2+CBAM 在 ETIS-LaribPolypDB 等困难子集上保持稳健；GPU 推理延迟在 8.5–11 ms 之间，FPS 介于 90–120，满足临床实时性要求。其四，基于 FastAPI + Vue 3 构建前后端分离的 Web 系统，通过 Docker Compose 一键部署。",
+  "keywords_cn": "关键词：直肠肿瘤；息肉分割；YOLO11；CBAM；FastAPI；Vue 3；辅助诊断系统",
+
+  "abstract_en": "Colorectal cancer is the third most common cancer and the second leading cause of cancer death worldwide, with rectal tumors accounting for roughly one third of cases. Colonoscopy is the gold standard for early screening, but manual reading suffers from high miss rates and inter-observer variability. Computer-aided diagnosis (CAD) systems based on deep learning are an effective way to reduce miss rates by localizing and segmenting suspicious lesions in real time.\n\nThis thesis builds an end-to-end rectal tumor CAD system on top of Ultralytics YOLO11s-seg. The main contributions are: (1) a unified data pipeline that merges Kvasir-SEG, CVC-ClinicDB and the five-subset PraNet test pack (798 images) into YOLO-seg format and removes cross-split duplicates by filename fingerprinting; (2) three architectural variants — adding a P2 high-resolution branch, inserting CBAM attention after backbone stages P3/P4/P5, and combining both — all of which preserve the original three-scale head and 8,400 anchors for a fair comparison; (3) a controlled ablation under identical AdamW hyper-parameters, showing a baseline mean Dice of 0.6313 and a +0.1134 Dice gain on CVC-300 with CBAM, while keeping parameter overhead below 5% and inference latency between 8.5–11 ms on a single T4 GPU; (4) a production-grade web stack built with FastAPI, SQLAlchemy, JWT, ReportLab on the backend and Vue 3, Element Plus, ECharts, Pinia on the frontend, packaged for one-command Docker deployment.",
+  "keywords_en": "Keywords: Rectal Tumor; Polyp Segmentation; YOLO11; CBAM; FastAPI; Vue 3; CAD System",
+
+  "ch1_1_title": "1.1 研究背景与意义",
+  "ch1_1_p1": "根据国际癌症研究机构（IARC）发布的 GLOBOCAN 数据，结直肠癌（Colorectal Cancer, CRC）是全球新发病例数排名第三、死亡病例数排名第二的恶性肿瘤，每年新发病例超过 190 万例，其中发生于直肠的约占 30%–35%。直肠肿瘤具有起病隐匿、早期症状不典型的特点，多数患者就诊时已属中晚期，五年生存率不足 50%。然而，若能在腺瘤性息肉阶段被及时切除，CRC 的发生概率可下降约 70%–90%，因而早期筛查对降低 CRC 死亡率具有决定性意义。",
+  "ch1_1_p2": "结肠镜检查是当前公认的早期筛查与诊断金标准。临床实践中，医师需要在长达 10–30 分钟的内镜检查过程中持续观察肠壁，识别毫米级的扁平型息肉或异型病变。多项前瞻性研究指出，腺瘤漏诊率（Adenoma Miss Rate, AMR）平均在 20% 上下，且与医师经验、检查时长、肠道清洁度密切相关。在基层医院与体检中心，由于内镜医师培训不足、阅片节奏快，漏诊率甚至更高。",
+  "ch1_1_p3": "近年来，深度学习驱动的计算机辅助诊断系统开始走向临床。以 Medtronic GI Genius、Olympus EndoBRAIN-EYE 为代表的商用系统已在欧美与日本获得监管批准，可在医师阅片时实时框选可疑区域，将 AMR 降低 30%–50%。然而，国内相关产品仍处于研发与临床试验阶段，开源的端到端系统更为稀缺。本文围绕“如何用最新一代实时检测器构建轻量、可部署的直肠肿瘤辅助诊断系统”这一目标展开，具有较强的工程价值与现实意义。",
+
+  "ch1_2_p1": "息肉分割任务的代表性方法可分为三类。第一类是基于 U-Net 及其改进的全卷积网络，如 U-Net++、ResUNet、DoubleU-Net；第二类是基于 Transformer 的方法，如 PraNet、Polyp-PVT、SSFormer，借助自注意力建模长距离依赖，在 ETIS、CVC-ColonDB 等小目标子集上取得领先指标；第三类是基于一阶段实例分割器的方法，以 YOLOv5-seg、YOLOv8-seg 为代表，强调推理速度，适合实时内镜场景。",
+  "ch1_2_p2": "PraNet 由 Fan 等人于 2020 年提出，并整合了五个公开测试集（CVC-300、CVC-ClinicDB、CVC-ColonDB、ETIS-LaribPolypDB、Kvasir），合计 798 张图像，已成为息肉分割社区的标准评测基准。本文所有外部测试均沿用该基准。",
+  "ch1_2_p3": "YOLO11 是 Ultralytics 于 2024 年发布的最新版本，相比 YOLOv8 引入 C3k2 模块、C2PSA 自注意力，使小模型规模下的精度进一步提升。Ultralytics 同时提供 yolo11n/s/m/l/x-seg 五档实例分割权重，本文选用 yolo11s-seg 作为基线，在精度与速度间取得平衡。",
+  "ch1_2_p4": "CBAM（Convolutional Block Attention Module）由 Woo 等人于 ECCV 2018 提出，通过通道注意力与空间注意力的级联，以极小的参数代价提升特征表达能力，广泛应用于医学图像与小目标检测任务。",
+
+  "ch1_3_p1": "本文的主要工作概述如下：",
+  "ch1_3_p2": "第一，构建统一的直肠肿瘤数据流水线。整合 Kvasir-SEG（1000 张）与 CVC-ClinicDB（612 张）作为训练池，整合 PraNet 五子集（798 张）作为外部测试集；编写下载（scripts/download_datasets.py）、掩码-多边形转换（scripts/convert_to_yolo_seg.py）、训练-验证-测试 8:1:1 划分（scripts/split_dataset.py）、跨数据集去重（scripts/setup_test_pack.py）、可视化校验（scripts/verify_dataset.py）五段式脚本，全程可复现。",
+  "ch1_3_p3": "第二，提出“保持检测头不变”的轻量化改进策略。在不增加 anchor 数量的前提下，分别引入 P2 高分辨率回灌分支、CBAM 注意力模块以及二者组合，构建三种改进配置文件（configs/yolo11s-seg-p2.yaml、-cbam.yaml、-p2-cbam.yaml），并通过 SMOKE_AND_TRAIN.sh 脚本在训练前自动验证锚点数量与参数规模，确保实验的公平性。",
+  "ch1_3_p4": "第三，完成一组严格控制的消融实验。在 Kaggle 免费 T4 GPU 上以相同的 AdamW 超参数（lr0=0.001，imgsz=640，batch=32，100 epoch）训练四个模型，使用 eval/eval_per_subset.py 在 PraNet 五子集上分别评估 Dice、mIoU、Mask mAP@50 与 FPS，使用 eval/compare_ablation.py 生成消融对比表与柱状图。",
+  "ch1_3_p5": "第四，基于 FastAPI + Vue 3 构建前后端分离 Web 系统。后端提供登录注册、图像上传、单模型/四模型对比推理、病例管理、PDF 报告与仪表盘统计；前端集成 Element Plus 与 ECharts 实现五个功能模块；整套系统通过 Docker Compose 一键部署，默认账户为 admin / admin123。",
+
+  "ch1_4": "全文共分七章。第一章概述研究背景、国内外现状与本文工作。第二章介绍 YOLO11-seg、CBAM 与 PraNet 基准的相关理论。第三章详述数据处理流水线。第四章给出三种模型改进方案及其配置文件。第五章给出训练设置与实验结果分析。第六章详述系统设计与实现，包括架构、数据库、API 与前端页面。第七章总结全文并展望未来工作。",
+
+  "ch2_1_p1": "YOLO11 沿用 YOLOv8 的“Backbone-Neck-Head”三段式结构，但在三个层面进行了改造。Backbone 中 C2f 模块替换为 C3k2 模块，C3k2 在 C2f 的两条分支上进一步采用 1×1 + 3×3 的卷积级联，使梯度路径更短。SPPF 之后追加 C2PSA 模块，引入 Position-Sensitive Attention，提升小目标的位置感知能力。Head 端取消了 v8 的解耦头中部分 1×1 卷积层，参数量进一步压缩。",
+  "ch2_1_p2": "YOLO11-seg 在检测头之外并联一个 Mask Proto 分支（默认输出 32 个原型掩码与 256 维通道），最终通过预测的 mask 系数与原型掩码的线性组合得到实例掩码。三尺度输出对应输入分辨率的 1/8、1/16、1/32（在 640×640 下分别为 80×80、40×40、20×20），合计 6400+1600+400=8400 个锚点。本文所有改进均严格保持该锚点配置，以保证与基线在同一锚点空间下进行公平比较。",
+
+  "ch2_2_p1": "CBAM 串联通道注意力（Channel Attention）与空间注意力（Spatial Attention）。通道注意力通过全局平均池化与全局最大池化生成两个 1×1×C 的描述符，经共享 MLP 后相加再 Sigmoid，输出每个通道的权重。空间注意力沿通道维度做平均与最大池化，得到两个 1×H×W 的特征图，拼接后通过 7×7 卷积与 Sigmoid 得到空间权重。两段权重依次与输入特征逐元素相乘。本文 CBAM 的实现采用懒加载（Lazy Initialization），在第一次前向传播时自动推断输入通道数，使其可作为标准模块在 YOLO YAML 中以 [-1, 1, CBAM, [3]] 的形式直接调用。",
+
+  "ch2_3_p1": "PraNet 测试包包含五个子集，覆盖不同采集设备与场景：CVC-300（60 张，正常对照与小息肉混合）、CVC-ClinicDB（62 张，与训练池同源，用于域内测试）、CVC-ColonDB（380 张，色调差异较大）、ETIS-LaribPolypDB（196 张，分辨率高、息肉细小）、Kvasir（100 张，与训练池同源）。",
+  "ch2_3_p2": "本文采用四类评价指标：Dice 系数（衡量预测掩码与 GT 的重叠程度）、mean Intersection over Union（mIoU）、Mask mAP@50（IoU 阈值 0.5 下的平均精度）以及 FPS（每秒帧数，衡量推理速度）。",
+
+  "ch3_1_p1": "训练池由 Kvasir-SEG 与 CVC-ClinicDB 两份公开数据集组成。Kvasir-SEG 来自挪威 Simula 研究所，包含 1000 张分辨率不一的内镜图像与对应二值掩码；CVC-ClinicDB 来自西班牙 Hospital Clinic Barcelona，包含 612 张 384×288 的高质量息肉图像。两份数据合计 1612 张图像。",
+  "ch3_1_p2": "外部测试集采用 PraNet 作者整合的 TestDataset 包，下载自 Google Drive（ID 1Y2z7FD5p5y31vkZwQQomXFRB0HutHyao，约 327 MB）。包内五子集图像数量与本文使用如下表所示。",
+
+  "ch3_2_p1": "scripts/convert_to_yolo_seg.py 负责将二值掩码转换为 YOLO-seg 多边形标签。其核心步骤包括：使用 OpenCV cv2.findContours 提取所有外轮廓；过滤面积小于图像总面积 0.0005 的微小连通域；使用 cv2.approxPolyDP 以 ε=0.001×周长的容差对轮廓进行简化，将平均顶点数控制在 20–60；将所有顶点坐标按图像尺寸归一化至 [0,1]，保留 6 位小数；以 class_id x1 y1 x2 y2 ... xn yn 的格式写入对应的 .txt 文件，类别 ID 固定为 0（tumor）。",
+
+  "ch3_3_p1": "scripts/split_dataset.py 以固定 seed=42 对训练池按 8:1:1 比例划分训练集、验证集与池内测试集。脚本特别识别文件名中包含 CVC-ColonDB 或 ETIS-LaribPolypDB 标记的样本并将其单独放置于 images/test/<source>/ 子目录，便于后续逐子集评估。",
+  "ch3_3_p2": "scripts/setup_test_pack.py 解决训练池与 PraNet 测试包之间的样本重叠问题。脚本提取 PraNet 中 Kvasir 与 CVC-ClinicDB 子集所有图像的文件名词干（stem），与训练池逐一比对，若命中则从训练集与验证集中删除对应的图像与标签文件。该步骤是杜绝数据泄漏的关键，否则模型在 Kvasir 与 CVC-ClinicDB 子集上的指标会被显著高估。",
+
+  "ch3_4_p1": "scripts/verify_dataset.py 对 train/val/test 三个划分分别执行三项检查：图像与标签数量是否一一对应、标签文件能否被正确解析为多边形、是否存在空标签或全图掩码异常。对每个划分随机抽取 5 张图像，将其多边形以绿色叠加到原图上并保存于 previews/ 目录，便于人工抽检。完整性日志写入 logs/verify_<timestamp>.log。",
+
+  "ch4_1_p1": "本文的改进遵循三条原则：",
+  "ch4_1_p2": "其一，保持原始三尺度检测头（P3/P4/P5）与 8400 锚点不变，避免锚点空间变化导致的不公平比较。其二，所有改进必须通过 SMOKE_AND_TRAIN.sh 的预检脚本验证，自动检查输出张量的 anchor 数（应为 34000=8400×4 个分量）与参数量（基线≈10.1 M、+P2≈10.2 M、+CBAM≈10.5 M、+P2+CBAM≈10.6 M）。其三，所有改进可通过修改 YAML 配置文件实现，不侵入 Ultralytics 源码，仅以 Monkey-Patch 的方式注册自定义 CBAM 模块。",
+
+  "ch4_2_p1": "ETIS 等子集中息肉直径常小于 32 像素，落到 P3 特征图（步长 8）上仅占 4×4 区域，难以被有效检测。受 BiFPN 与 P2 head 思路启发，本文设计了 P2 反向回灌分支：将 Neck 中 P3 阶段的特征上采样 2 倍后与 Backbone 输出的 P2 特征（步长 4）进行拼接，经 C3k2 融合后再下采样回灌至 P3，使 P3 检测头同时获得高分辨率细节与原始语义特征。该分支不增加新的检测尺度，因而锚点总数仍为 8400。",
+
+  "ch4_3_p1": "CBAM 被插入到 Backbone 的 P3、P4、P5 三个尺度输出之后，即在 SPPF 之前。三个 CBAM 模块共增加约 0.4 M 参数，FLOPs 增加约 1.9 G。在 YAML 中通过下述片段直接调用：",
+
+  "ch4_4_p1": "实验 4 在 Backbone 的 P3/P4/P5 后均插入 CBAM，并在 Neck 中保留 P2 回灌分支。组合后参数量约 10.6 M，FLOPs 约 40.4 G，相对基线分别增加约 5% 与 14%，符合“轻量化”目标。",
+
+  "ch5_1_p1": "云端训练环境采用 Kaggle 免费 T4 GPU（显存 16 GB），软件栈为 Python 3.10、PyTorch 2.1、Ultralytics 8.3、CUDA 12.1。本地评估环境采用 macOS / Linux + CPU，用于 chain_evals.sh 的 CPU 评测；CPU 与 CUDA 在 mAP@0.5 上的差异小于 0.5%，但 Dice 略低于 CUDA（基线 CUDA Mean Dice = 0.6324，CPU 评测 0.6313），原因在于半精度推理与不同算子实现的微小差异。",
+
+  "ch5_3_p1": "eval/eval_per_subset.py 对每个子集动态生成临时 data.yaml，调用 Ultralytics model.val() 计算 Box/Mask 的 mAP@50、mAP@0.5:0.95、Precision、Recall，并通过遍历预测掩码与 GT 掩码计算每张图像的 Dice 与 IoU，最后取平均得到子集指标，输出至 results/per_subset_metrics.{md,csv}。eval/compare_ablation.py 调用上述评测函数对四个模型逐一评估，汇总至 results/ablation_table.{md,csv} 并绘制柱状图。",
+
+  "ch5_6_p1": "第一，基线模型在与训练池同源的 CVC-ClinicDB（0.8450）与 Kvasir（0.8142）子集上表现优异，表明基线已具备较强的拟合能力。第二，+CBAM 在 CVC-300 子集上取得 +0.1134 的最大单项增益，说明通道与空间注意力在面对未见过的色调与小息肉时具有更好的泛化能力，但在与训练池同源的子集上反而出现下降，呈现出一定的“过度正则化”特征。第三，+P2 在所有子集上均略低于基线，说明单纯的高分辨率特征回灌在小数据集上可能引入额外噪声，需要更长的训练或更强的正则化才能发挥作用。第四，+P2+CBAM 综合两者优势，在最困难的 ETIS-LaribPolypDB 子集上仅比基线下降 0.0132，是四个模型中最稳健的组合，但平均 Dice 仍略低于基线。第五，整体来看，本文的轻量化改进策略未能在平均 Dice 上超过基线，但揭示了“在困难子集上的差异化收益”这一重要现象，为后续引入更强的数据增广（如 CutMix、CopyPaste）与更精细的注意力（如 EMA、SimAM）指明了方向。",
+
+  "ch6_1_p1": "系统采用前后端分离的三层架构。表现层为 Vue 3 单页应用（SPA），通过 Vite 开发服务器（端口 5173）或生产打包文件托管。业务层为 FastAPI 应用（端口 8000），提供 RESTful 接口并通过 JWT 进行身份鉴权。数据层包含 SQLite 关系型数据库（backend/data.db）、本地文件存储（uploads/ 与 reports/）以及四份 YOLO11s-seg 权重文件（weights/baseline_best.pt 等）。三层之间通过 HTTP/JSON 通信，整套系统通过 Docker Compose 一键部署。",
+
+  "ch6_2_note": "三表关系：users 一对多关联 cases（通过 doctor_id）；cases 一对多关联 diagnoses（通过 case_id），即同一病例可对四个模型分别推理生成四条诊断记录，便于“四模型对比”功能。",
+
+  "ch6_3_p1": "JWT 由 python-jose 生成，使用 HS256 算法，过期时间 1440 分钟（24 小时），密钥在 backend/app/config.py 中可配置。backend/app/core/inference_engine.py 实现 YOLO11s-seg 的懒加载推理引擎，首次调用时才加载权重并保留在内存，可通过 unload() 释放显存。backend/app/core/pdf_generator.py 使用 ReportLab 渲染 A4 报告，注册 SimSun 中文字体，包含报告头、AI 分析表、原图、医师备注与免责声明。",
+
+  "ch6_4_p1": "前端采用 Vue 3 + Vite + Element Plus + Pinia + Vue Router + Axios + ECharts 技术栈。frontend/src/api/index.js 配置 Axios 实例，BaseURL 为 /api，请求拦截器自动附加 JWT，响应拦截器统一处理 401 跳转登录。frontend/src/stores/auth.js 使用 Pinia 管理登录态，登录成功后将 token 与用户信息持久化至 localStorage。",
+  "ch6_4_p2": "前端共实现六个页面（路由）：登录页 Login.vue、仪表盘 Dashboard.vue、AI 诊断 Diagnosis.vue、模型对比 ModelCompare.vue、病例列表 CaseList.vue、病例详情 CaseDetail.vue、系统设置 Settings.vue。三个通用组件 ImageUploader.vue（图像上传）、ResultViewer.vue（结果查看）、ReportPreview.vue（PDF 预览对话框）被多个页面复用。",
+
+  "ch6_5_p1": "三种部署方式可任选其一：",
+  "ch6_5_p2": "本地开发：分别在 backend/ 与 frontend/ 目录执行 pip install -r requirements.txt && bash run.sh 与 npm install && bash run.sh。",
+  "ch6_5_p3": "Docker 部署：在仓库根目录执行 docker-compose up -d，自动构建两个镜像并挂载 uploads/、reports/、data.db、weights/ 四个数据卷，重启策略为 unless-stopped。",
+  "ch6_5_p4": "云端部署：将 Docker 镜像推送至阿里云 ACR/腾讯 TCR，通过 Kubernetes Deployment + Ingress 暴露服务。默认管理员账户为 admin / admin123，首次登录后应立即修改。",
+
+  "ch7_1_p1": "本文围绕直肠肿瘤辅助诊断这一医学影像分析的典型任务，完成了从数据准备、模型改进、消融实验到 Web 系统交付的全流程工作。在数据层面，整合了 1612 张训练图像与 798 张外部测试图像，并通过文件名指纹去重彻底杜绝跨集泄漏。在模型层面，提出“保持锚点不变 + P2 回灌 + CBAM 注意力”三段式改进，参数与计算量增幅控制在 5% 与 15% 以内。在实验层面，基线模型在五子集上的平均 Dice 达到 0.6313，+CBAM 在 CVC-300 子集上取得 +0.1134 的最大单项增益。在系统层面，基于 FastAPI + Vue 3 构建了具备完整业务闭环的 Web 应用，支持四模型并排对比与 PDF 报告生成。",
+
+  "ch7_2_p1": "本文仍存在四点不足：",
+  "ch7_2_p2": "第一，平均 Dice 未能超越基线，未来可尝试 CopyPaste、CutMix 等更强的数据增广，或采用 EMA、SimAM 等更轻量的注意力。第二，训练数据规模有限（1612 张），未来可引入 SUN Database、PolypGen 等更大规模的公开数据集，并探索半监督与自监督学习。第三，系统目前仅支持静态图像推理，未来可扩展至内镜视频流的实时检测，并引入 ByteTrack 等目标跟踪算法降低帧间抖动。第四，PDF 报告的医师备注仍需手工录入，未来可结合大语言模型（如医疗领域微调的 LLaMA）实现报告草稿的自动生成。",
+
+  "appendix_intro": "下表罗列论文正文中所有需要插入的图、表、代码清单与系统截图，每一行包含所在章节、图表编号、标题、来源文件以及“插入位置”——即应该插入到论文中的哪一段之后。建议按本清单顺序补齐图表。",
+
+  "acknowledgment": "（按学校模板填写）"
+}
